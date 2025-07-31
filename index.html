@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Greenflow Business - Carbon Emission Dashboard</title>
+  <link rel="stylesheet" href="/styles/global.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <style>
+    :root {
+      --dark-bg: #111827;
+      --primary: #4F46E5;
+      --accent: #10B981;
+      --text-light: #F9FAFB;
+      --text-dark: #1F2937;
+      --card-bg: #FFFFFF;
+      --card-radius: 8px;
+      --card-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #F3F4F6; color: var(--text-dark); }
+    header { background: var(--dark-bg); color: var(--text-light); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { margin: 0; font-size: 1.25rem; }
+    .year-buttons { display: flex; gap: 8px; }
+    .year-buttons button { background: transparent; border: none; color: var(--text-light); padding: 6px 12px; cursor: pointer; border-radius: var(--card-radius); }
+    .year-buttons button.active { background: var(--accent); }
+    .narrative { background: var(--card-bg); border-radius: var(--card-radius); box-shadow: var(--card-shadow); padding: 16px 24px; margin: 24px; font-size: 1rem; }
+    .controls { display: flex; gap: 16px; align-items: center; margin: 16px 24px; }
+    .controls select, .controls button { padding: 8px 12px; border-radius: var(--card-radius); border: 1px solid #D1D5DB; }
+    .controls button { background: var(--primary); color: var(--text-light); border: none; cursor: pointer; }
+    .tabs { display: flex; gap: 8px; margin: 0 24px 16px; }
+    .tabs button { flex: 1; padding: 8px 0; border: none; border-radius: var(--card-radius); background: #E5E7EB; cursor: pointer; }
+    .tabs button.active { background: var(--primary); color: var(--text-light); }
+    .filter { margin: 0 24px 24px; }
+    .filter select { padding: 8px; border-radius: var(--card-radius); border: 1px solid #D1D5DB; }
+    .main { padding: 0 24px 24px; }
+    .hidden { display: none; }
+    .map-hotspot, .chart-container, .cards { background: var(--card-bg); border-radius: var(--card-radius); box-shadow: var(--card-shadow); padding: 16px; margin-bottom: 24px; }
+    .map-hotspot h3, .chart-container h3 { margin: 0 0 8px; }
+    .canvas-wrapper { position: relative; width: 100%; height: 180px; padding-bottom: 0; } }
+    .canvas-wrapper canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 16px; }
+    .card { padding: 16px; }
+    .card h3 { margin: 0 0 8px; }
+    .card p { margin: 0; font-size: 1.5rem; font-weight: 600; color: var(--primary); }
+    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>탄소배출 2023</h1>
+    <div class="year-buttons">
+      <button>2019</button>
+      <button>2020</button>
+      <button>2021</button>
+      <button>2022</button>
+      <button class="active">2023</button>
+      <button>2024</button>
+    </div>
+  </header>
+
+  <div class="narrative">
+    <strong>요약:</strong> 2025년 상반기 총 배출량은 <strong>123 tCO₂e</strong>로 전년 대비 <strong>6% 감소</strong>하였으며, 주요 배출원은 Scope3 공급망(45%)입니다.
+  </div>
+  <div class="controls">
+    <select><option>CO₂e</option><option>CH₄</option><option>N₂O</option></select>
+    <button>Export CSV</button>
+  </div>
+
+  <div class="tabs">
+    <button class="active">Total</button>
+    <button>Scope1</button>
+    <button>Scope2</button>
+    <button>Scope3</button>
+  </div>
+  <div class="filter">
+    <select><option>전체 사업부</option><option>사업부 A</option><option>사업부 B</option></select>
+  </div>
+
+  <section class="main">
+    <!-- Total View -->
+    <div id="view-total">
+      <div class="map-hotspot">
+        <h3>지역별 배출 Hotspot</h3>
+        <div style="height:300px; background:#E0E7FF; border-radius: var(--card-radius); text-align:center; line-height:300px;">지도 인터랙티브 Hotspot</div>
+      </div>
+      <div class="grid-two">
+        <div class="chart-container">
+          <h3>총 배출량 분포</h3>
+          <div class="canvas-wrapper"><canvas id="donutTotal"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <h3>산업 평균 vs 자사</h3>
+          <div class="canvas-wrapper"><canvas id="barIndustry"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-two">
+        <div class="chart-container">
+          <h3>연도별 배출량 추세</h3>
+          <div class="canvas-wrapper"><canvas id="lineYearly"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <h3>월별 배출량 추세</h3>
+          <div class="canvas-wrapper"><canvas id="lineMonthly"></canvas></div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>배출권 환산 비용</h3>
+          <p>₩1,234,567</p>
+        </div>
+        <div class="card">
+          <h3>배출권 상세내역</h3>
+          <p>예정: 1,000 tCO₂e</p>
+          <p>잔여: 150 tCO₂e</p>
+        </div>
+      </div>
+      <div class="chart-container">
+        <h3>스코프별 배출량</h3>
+        <div class="canvas-wrapper"><canvas id="barScopes"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Scope1 View (unchanged) -->
+    <div id="view-scope1" class="hidden">
+      <!-- 기존 Scope1 콘텐츠 복원 -->
+      <div class="grid-two">
+        <div class="chart-container">
+          <h3>Scope1 배출 분포</h3>
+          <div class="canvas-wrapper"><canvas id="donutScope1"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <h3>연료유형별 이동원소 배출량</h3>
+          <div class="canvas-wrapper"><canvas id="barFuelMobile"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-two">
+        <div class="chart-container">
+          <h3>연료유형별 고정원소 배출량</h3>
+          <div class="canvas-wrapper"><canvas id="barFuelStationary"></canvas></div>
+        </div>
+        <div class="chart-container">
+          <h3>Scope1 월별 추세</h3>
+          <div class="canvas-wrapper"><canvas id="barMonthlyScope1"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Placeholders for Scope2 & Scope3 -->
+    <div id="view-scope2" class="hidden"><p>Scope2 콘텐츠 구성 중...</p></div>
+    <div id="view-scope3" class="hidden"><p>Scope3 콘텐츠 구성 중...</p></div>
+  </section>
+
+  <script>
+    // Tab switching logic
+    const tabs = document.querySelectorAll('.tabs button');
+    const views = ['total','scope1','scope2','scope3'];
+    tabs.forEach((tab, idx) => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        views.forEach(v => document.getElementById('view-'+v).classList.add('hidden'));
+        document.getElementById('view-'+views[idx]).classList.remove('hidden');
+      });
+    });
+    window.addEventListener('load', () => {
+      // Thin bar defaults
+      Chart.defaults.datasets.bar.barPercentage = 0.5;
+      Chart.defaults.datasets.bar.categoryPercentage = 0.5;
+      // Total charts
+      new Chart(document.getElementById('donutTotal'), { type:'doughnut', data:{ labels:['Scope1','Scope2','Scope3'], datasets:[{ data:[1500,1200,2300], backgroundColor:['#4F46E5','#10B981','#F59E0B'] }] }, options:{ maintainAspectRatio:false } });
+      new Chart(document.getElementById('barIndustry'), { type:'bar', data:{ labels:['Scope1','Scope2','Scope3'], datasets:[{ label:'산업 평균', data:[1600,1300,2100], backgroundColor:'#D1D5DB' }, { label:'자사', data:[1500,1200,2300], backgroundColor:'var(--primary)' }] }, options:{ maintainAspectRatio:false } });
+      new Chart(document.getElementById('lineYearly'), { type:'line', data:{ labels:['2019','2020','2021','2022','2023'], datasets:[{ label:'tCO₂e', data:[10000,11000,10500,12000,12300], borderColor:'var(--primary)', fill:false }] }, options:{ maintainAspectRatio:false } });
+      new Chart(document.getElementById('lineMonthly'), { type:'line', data:{ labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], datasets:[{ label:'tCO₂e', data:[1000,900,1100,1000,1050,1020,1080,1070,1040,1120,1150,1230], borderColor:'var(--accent)', fill:false }] }, options:{ maintainAspectRatio:false } });
+      new Chart(document.getElementById('barScopes'), { type:'bar', data:{ labels:['Scope1','Scope2','Scope3'], datasets:[{ label:'tCO₂e', data:[1500,1200,2300], backgroundColor:['#4F46E5','#10B981','#F59E0B'] }] }, options:{ maintainAspectRatio:false } });
+      // Scope1 charts
+      new Chart(document.getElementById('donutScope1'), { type:'doughnut', data:{ labels:['이동원소','고정원소','공정배출','탈루배출','폐기물'], datasets:[{ data:[2581.20,1019.46,1221.10,117.50,211.00], backgroundColor:['#4F46E5','#10B981','#F59E0B','#EF4444','#8B5CF6'] }] }, options:{ maintainAspectRatio:false } });
+      new Chart(document.getElementById('barFuelMobile'), { type:'bar', data:{ labels:['휘발유','경유','LPG','기타'], datasets:[{ label:'tCO₂e', data:[1434.29,1075.72,716.17,358.87], backgroundColor:'var(--primary)' }] }, options:{ maintainAspectRatio:false } });
+      new Chart(document.getElementById('barFuelStationary'), { type:'bar', data:{ labels:['휘발유','경유','LPG','기타'], datasets:[{ label:'tCO₂e', data:[305.46,257.74,167.83,83.81], backgroundColor:'var(--primary)' }] }, options:{ maintainAspectRatio:false } });
+      new Chart(document.getElementById('barMonthlyScope1'), { type:'bar', data:{ labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], datasets:[{ label:'2023', data:[650,580,700,600,630,610,620,640,600,650,670,700], backgroundColor:'var(--primary)' }] }, options:{ maintainAspectRatio:false } });
+    });
+  </script>
+  <footer>© 2025 2PM Lab Inc.</footer>
+</body>
+</html>
